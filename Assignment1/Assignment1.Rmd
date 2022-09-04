@@ -15,11 +15,11 @@ This file contains links to the data behind [Do Voters Want Democrats or Republi
 library(tidyverse)
 library(dplyr)
 library("anytime")
+library(RCurl)
 
 #load in data into a dataframe and parse columns
-polls <- read_csv("Data/congress-generic-ballot/generic_topline.csv",
-                  col_types = cols(.default = col_character())
-                  )
+urlfile <- 'https://raw.githubusercontent.com/jlixander/DATA607/main/Assignment1/Data/congress-generic-ballot/generic_topline.csv'
+polls <- read_csv(url(urlfile))
 #View df
 polls
 ```
@@ -76,4 +76,4 @@ polls_2018
 
 ## Findings and recommendations
 
-To extend the accuracy and integrity of these polls it would be good practice to include a weighted score for geographical delineation. Historically its been proven that there are drastic opinions between voters who reside in rural, suburban, and urban areas. In a sense, this score would provide any insight into possible skewness that would introduce bias to the voter data. Additionally, I would include other parties such the Libertarian or Green party to gauge if "other" category parties are gaining traction as time progresses. The next dimension I would add is if said poll is influenced by some sort of politically affiliated party. Lastly, it may prove worthy to add if the pollster is a for-profit or non-profit organization.
+To extend the accuracy and integrity of these polls it would be good practice to include a weighted score for geographical delineation. Historically its been proven that there are drastic opinions between voters who reside in rural, suburban, and urban areas. In a sense, this score would provide any insight into possible skewness that would introduce bias to the voter data. Additionally, I would include other parties such the Libertarian or Green party to gauge if the "other" category parties are gaining traction as time progresses. The next dimension I would add is if polls are influenced by some sort of politically affiliated party. Lastly, it may prove worthy to add if the pollster is a for-profit or non-profit organization.
