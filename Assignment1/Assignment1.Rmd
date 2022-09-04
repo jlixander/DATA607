@@ -1,0 +1,79 @@
+---
+title: "Do Voters Want Democrats or Republicans in Congress? - Assignment 1"
+author: "Jose Rodriguez"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+## Overview
+
+This folder contains an R script that showcases how to read a csv file, parse its data columns, perform simple formatting tasks, and create subset dataframes. The data used is from across multiple poll firms who gauge bipartisan voter sentiment between democrats and republicans in the United States.
+
+This file contains links to the data behind [Do Voters Want Democrats or Republicans in Congress?]<https://projects.fivethirtyeight.com/polls/generic-ballot/>
+
+```{r setup, include=TRUE}
+library(tidyverse)
+library(dplyr)
+library("anytime")
+
+#load in data into a dataframe and parse columns
+polls <- read_csv("Data/congress-generic-ballot/generic_topline.csv",
+                  col_types = cols(.default = col_character())
+                  )
+#View df
+polls
+```
+
+Data wrangling performed:
+```{r Data Wrangling}
+#FORMATTING DATE COLUMN
+#Set locale to avoid return NA values for dates
+lct <- Sys.getlocale("LC_TIME"); Sys.setlocale("LC_TIME", "C")
+polls$modeldate <- anydate(polls$modeldate)
+
+#Remove timestamp and subgroup column
+polls = subset(polls, select = -c(timestamp,subgroup))
+
+#Rename columns
+polls <- polls %>%
+  rename(ModelDate = modeldate,
+         PercDemEst = dem_estimate,
+         PercDemHigh = dem_hi,
+         PercDemLow = dem_lo,
+         PercRepEst = rep_estimate,
+         PercRepHigh = rep_hi,
+         PercRepLow = rep_lo,
+         )
+
+
+#Format all columns holding a percent value to 2 decimal places
+cols.perc <- c("PercDemEst","PercDemHigh","PercDemLow","PercRepEst","PercRepHigh","PercRepLow")
+polls[cols.perc] <- sapply(polls[cols.perc],as.numeric)
+
+polls <- polls %>% 
+  mutate_if(is.numeric, round, digits = 2)
+```
+
+Subsetting performed:
+```{r Subsetting}
+#Subset data to the year 2017 and 2018
+polls_2017 <- polls %>% 
+  filter(ModelDate < '2018-01-01')
+
+polls_2018 <- polls %>% 
+  filter(ModelDate >= '2018-01-01')
+```
+
+
+## Results
+Below you will find the final formatted dataframe along with its 2 subsets:
+
+```{r Results}
+polls
+polls_2017
+polls_2018
+```
+
+## Findings and recommendations
+
+To extend the accuracy and integrity of these polls it would be good practice to include a weighted score for geographical delineation. Historically its been proven that there are drastic opinions between voters who reside in rural, suburban, and urban areas. In a sense, this score would provide any insight into possible skewness that would introduce bias to the voter data. Additionally, I would include other parties such the Libertarian or Green party to gauge if "other" category parties are gaining traction as time progresses. The next dimension I would add is if said poll is influenced by some sort of politically affiliated party. Lastly, it may prove worthy to add if the pollster is a for-profit or non-profit organization.
