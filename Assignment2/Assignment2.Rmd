@@ -1,0 +1,73 @@
+---
+title: "Assignment2"
+author: "Jose Rodriguez"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+#Load Libraries
+library(DBI)
+library(RPostgres)
+library(tcltk) #library to handle input prompts to hide password
+sleep_default <- 3
+```
+
+##Prompt user for the database password
+
+By using this method we make sure that our password remains confidential. The user is asked to type in the password when the code is executed. An alternative can be saving the password to a config file.
+
+```{r Database password input}
+#Create input prompt for database password
+psswd <- .rs.askForPassword("Database Password:") #password is "postgres"
+```
+
+## Create the database connection between R and PostgresQL.
+
+In this instance we connect to a locally hosted database. The same methodology may be used to connect to a cloud hosted database by using the proper login credentials and host link.
+
+
+```{r create database connection}
+#Create database connection
+Sys.sleep(sleep_default)
+con <- dbConnect(
+  RPostgres::Postgres(),
+  # without the previous and next lines, some functions fail with bigint data 
+  #   so change int64 to integer
+  bigint = "integer",  
+  host = "localhost",
+  port = 5432,
+  user = "postgres",
+  password = psswd,
+  dbname = "Data607_Assignment2")
+```
+
+# Check your connection
+
+Once fully connected to the database it is good practice to check the tables at your disposal. The following code lists all the table names.
+
+```{r Get list of tables in the database}
+#List tables in database
+dbListTables(con)
+```
+
+
+# Load table into a dataframe - Run query
+
+Next we load the movies data into a dataframe by using a function built into DBI
+
+```{r Load Data}
+#Run query to load movies data from the database into a dataframe
+df <- dbGetQuery(con, "select * from movies") #Returns the result of a query as a data frame
+print(df) #view table
+```
+
+# Disconnect from Database
+
+Lastly we terminate the connection to the database once we have the data we need.
+
+```{r Disconnect from database}
+#Disconnect from database
+dbDisconnect(con)
+```
+

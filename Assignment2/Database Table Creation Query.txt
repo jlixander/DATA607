@@ -1,0 +1,11 @@
+CREATE TABLE "Movie_Ratings" 
+(
+    "Rater" varchar	NOT NULL,
+    "Eternals" int,
+    "Spiderman: No_Way_Home" int,
+    "Dont Look Up" int,
+    "Encanto" int,
+    "F9: The Fast Saga" int,
+    "Resident Evil: Welcome_to_Raccoon_City" int,
+	PRIMARY KEY ("Rater")
+);
