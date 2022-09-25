@@ -55,18 +55,18 @@ print(var_str)
 
 #Exercise 4
 #Start and end with the same character.
-#^(.).*\1$
-word_lst <-c("car", "nun", "room", "bob", "picture", "racecar")
-rgx1 ="^(.).*\1$"
-str_subset(word_lst,rgx1)
-
+#^([a-z])(([a-z]+\\1$)|\\1?$)
+words <- c("car", "nun", "room", "bob", "picture", "racecar", 'whenever', "mama","church", "mississippi", "eleven")
+rgx1 ="^([a-z])(([a-z]+\\1$)|\\1?$)"
+ss1 <- str_subset(words, rgx1)
+ss1
 
 #Contain a repeated pair of letters (e.g. "church" contains "ch" repeated twice.)
-#([a-z][a-z])[a-z]*\1$
-rgx2 ="([a-z][a-z])[a-z]*\1$"
-str_subset(df.names,rgx2)
+rgx2 ="([A-Za-z][A-Za-z]).*\\1"
+ss2 <- str_subset(words, rgx2)
+ss2
 
 #Contain one letter repeated in at least three places (e.g. "eleven" contains three "e"s.)
-#([a-z])+[a-z]{2,}
-rgx3 ="([a-z])+[a-z]{2,}"
-str_subset(df.names,rgx3)
+rgx3 ="([A-Za-z]).*\\1.*\\1"
+ss3 <- str_subset(words, rgx3)
+print(ss3)
