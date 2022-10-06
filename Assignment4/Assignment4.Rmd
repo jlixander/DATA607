@@ -5,26 +5,119 @@ date: "2022-10-05"
 output: html_document
 ---
 
+## Overview
+In this file we explore how to tidy wide data. Tidying data makes it much easier for applications to interpret. In this file we will also show how it becomes much easier to visualize data after converting it to long format.
+
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(RColorBrewer)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+We first begin by loading our working data. In this instace we are using a .csv file hosted in a public github repository. We will use the url() function to read our raw .csv values with the read_csv() function. We can think of this just like a mathematical equation surrounded by parenthesis; the functionction execute from the inside out.
+```{r Load data}
+#load in data into a dataframe
+urlfile <- 'https://raw.githubusercontent.com/jlixander/DATA607/main/Assignment4/data.csv'
+df1 <- read_csv(url(urlfile))
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+View(df1)
+```
+A good practice in data science is to always check your data before working on it. It'll give us a clue as to what should first be cleaned up and transformed to better serve our data analysis. In this case, we found that our Flt_cnt column was in a character format. Since this is a value we will be visualizing we need to convert it to a numeric data type.
 
-```{r cars}
-summary(cars)
+Additionally, we found some other quirks in the data. Our column names have space in between words which makes it hard to refer to it in our script. The first two columns do not have a column name. Row 3 of our dataset is completely empty. Lastly, we will need to fill in the blank values for the missing airline names.
+
+## Check Data/Tidy Data
+
+
+```{r Data Wrangling}
+#Remove all white spaces from column names
+names(df1) <- gsub(" ", "_", names(df1))
+
+#Give column 1 and 2 names
+colnames(df1)[1] <- "Airline"
+colnames(df1)[2] <- "OnTime_Delayed"
+
+#Remove empty row
+df1 <- df1[-c(3),]
+
+#Fill empty values for Airline
+df1 <- df1 %>% 
+  fill(Airline)
+
+View(df1)
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+#Pivot data
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+Using long format data is crucial in data analytics.In this case we have a wide format. To fix this we will use the function pivot_longer() that will allow us to transpose our wide data into the desired long format. 
+
+```{r Pivot Data}
+df_longer <- df1 %>%
+  pivot_longer(cols = c(Los_Angeles,Phoenix, San_Diego, San_Francisco, Seattle), 
+               names_to = "Airport", 
+               values_to = "Flt_cnt"
+               )
+View(df_longer)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r Check Data}
+sapply(df_longer, class)
+
+#Convert Flt_cnt column to int
+df_longer$Flt_cnt <- as.numeric(as.character(df_longer$Flt_cnt))
+```
+## Subsetting Data
+In this step we subset our data to the time of departure. We want to segregate on-time flights from those delayed so that we can better represent a comparison between Airlines. We use the filter() function to accomplish this by feeding in our condition.
+
+```{r Subset Data}
+ot_df <- filter(df_longer, OnTime_Delayed == "on time")
+delay_df <- filter(df_longer, OnTime_Delayed == "delayed")
+```
+
+
+# Visuals
+In our visual we will plot line graphs to compare our airlines and their respective departure counts. Additionally, we will also take a look at airports. This is an alternative approach where we might be able to deduce that the airport plays a role in the rate of delayed flights.
+```{r Plots1}
+#Create a Line graph showing how on time flights compare for airlines
+ot_df |>
+  ggplot(aes(x=Airport, y=Flt_cnt, group=Airline, color=Airline))+
+  geom_line() +
+  labs(
+    title = "On Time Flight Count by Airline and Airport",
+    x = "Departing Airport",
+    y = "Count of On Time Flights",
+  )
+
+#Create a Line graph showing how delayed flights compare for airlines
+delay_df |>
+  ggplot(aes(x=Airport, y=Flt_cnt, group=Airline, color=Airline))+
+  geom_line() +
+  labs(
+    title = "Delayed Flight Count by Airline and Airport",
+    x = "Departing Airport",
+    y = "Count of Delayed Flights",
+  )
+
+
+#For each airline find the proportion of On Time vs Delayed flights.
+perc <- df_longer |>
+  group_by(Airline, OnTime_Delayed) |>
+  summarise(Flt_cnt = sum(Flt_cnt))
+ggplot(perc, aes(fill=OnTime_Delayed, y=Flt_cnt, x=Airline)) + 
+  geom_bar(position="fill", stat="identity")
+
+
+#For each airport find the proportion of On Time vs Delayed flights.
+perc <- df_longer |>
+  group_by(Airport, OnTime_Delayed) |>
+  summarise(Flt_cnt = sum(Flt_cnt))
+ggplot(perc, aes(fill=OnTime_Delayed, y=Flt_cnt, x=Airport)) + 
+  geom_bar(position="fill", stat="identity")
+```
+
+# Conclusion
+After our brief analysis it was found that both airlines have similar delay rates. Initially, by only looking at counts it seemed as if AM WEST airline provides lower quality service than ALAKSKA airline. However, our visuals found that the strongest delay correlation is found by comparing airports.
+
+

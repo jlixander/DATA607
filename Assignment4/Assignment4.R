@@ -6,9 +6,8 @@ library(RColorBrewer)
 hue <- brewer.pal(3, "Pastel2")
 
 #load in data into a dataframe
-df1 <- read_csv("data.csv", 
-                  col_types = cols(.default = col_character())
-                  )
+urlfile <- 'https://raw.githubusercontent.com/jlixander/DATA607/main/Assignment4/data.csv'
+df1 <- read_csv(url(urlfile))
 
 #Remove all whitespaces from column names
 names(df1) <- gsub(" ", "_", names(df1))
