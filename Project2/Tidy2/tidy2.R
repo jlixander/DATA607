@@ -1,15 +1,15 @@
 #Load Libraries
 library("tidyverse")
 
-#Load data
-df <- read_csv("C:/Users/jlixa/Desktop/CUNY/Fall22/DATA607_Rep/Project2/Tidy2/brain_stroke.csv")
 
-#Set column data types
-df$age<-round(as.numeric(df$age), 0)
+#load in data into a dataframe
+urlfile <- 'https://raw.githubusercontent.com/jlixander/DATA607/main/Project2/Tidy2/brain_stroke.csv'
+df <- read_csv(url(urlfile))
 
 #Give each observation a unique ID - helps keep data group after a pivot_longer
 df$ID <- seq.int(nrow(df))
 
+#####Data Wrangling/tidying
 #Remove encoded values from columns
 df <- df |>
   janitor::clean_names() |>
@@ -17,6 +17,9 @@ df <- df |>
          stroke = recode(stroke, "0" = "Negative", "1" = "Positive"),
          heart_disease = recode(heart_disease, "0" = "Negative", "1" = "Positive")
          )
+
+#Set column data types
+df$age<-round(as.numeric(df$age), 0)
 
 #Check for na values in each column
 df %>%

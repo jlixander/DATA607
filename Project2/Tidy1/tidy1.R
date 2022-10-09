@@ -1,8 +1,9 @@
 #Load Libraries
 library("tidyverse")
 
-#Load data
-df <- read_csv("C:/Users/jlixa/Desktop/CUNY/Fall22/DATA607_Rep/Project2/Tidy1/Section8-FY22.csv")
+#load in data into a dataframe
+urlfile <- 'https://raw.githubusercontent.com/jlixander/DATA607/main/Project2/Tidy1/Section8-FY22.csv'
+df <- read_csv(url(urlfile))
 
 #Get column names
 colnames(df)
@@ -11,7 +12,6 @@ colnames(df)
 df$ID <- seq.int(nrow(df))
 
 #####Data Wrangling/tidying
-#1
 df_longer <- df |>
   janitor::clean_names() |>
   pivot_longer(cols = l50_1:l80_8, 
