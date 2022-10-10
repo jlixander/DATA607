@@ -39,4 +39,53 @@ df_clean <- df_longer |>
   select(-c(county,income_level)) |>
   mutate(county_name = str_remove_all(county_name, " County"))
 
+#Label US Territories
+us_ter <- c("GU", "MP", "AS", "VI", "PR")
+
+df_clean <- df_clean |>
+  mutate(territory = case_when(
+    state_alpha %in% us_ter ~ "us_territory",
+    !(state_alpha %in% us_ter) ~ "non_us_territory"
+    ))
+
+
 #####Data Analysis
+#1 Which States have the lowest and highest income limit average across programs?
+The top 5 states with the lowest average income limits are:
+  1) PR
+  2) MP
+  3) AS
+  4) MS
+  5) AR
+
+
+#2 Which states have the highest income limits average across programs?
+The top 5 states with the highest average income limits are:
+  1) DC
+  2) MA
+  3) HI
+  4) CT
+  5) NJ
+
+#3 Do metro areas tend to have higher income limits?
+ As expected, it was found that metropolitan areas have higher income thresholds across all programs.
+
+#4 Do US territories, on average, have higher income limits compared to the continental US?
+Most US territory limits fall on the bottom half of all states.
+
+df_clean |>
+  ggplot(aes(x= reorder(factor(state_alpha), -income_threshold), y = income_threshold, fill = program)) +
+  stat_summary(fun = "mean", geom = "bar") +
+  coord_flip()
+
+df_clean |>
+  ggplot(aes(x= reorder(factor(state_alpha), -income_threshold), y = income_threshold, fill = program)) +
+  stat_summary(fun = "mean", geom = "bar") +
+  coord_flip() +
+  facet_wrap(~metro)
+
+df_clean |>
+  ggplot(aes(x= reorder(factor(state_alpha), -income_threshold), y = income_threshold, fill = program)) +
+  stat_summary(fun = "mean", geom = "bar") +
+  coord_flip() +
+  facet_wrap(~territory)
