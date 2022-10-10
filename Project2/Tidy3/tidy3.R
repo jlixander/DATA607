@@ -17,3 +17,5 @@ df_longer <- df |>
   pivot_longer(cols = AVG_SPEED:AVG_SPEED_DEF,
                names_to = "PLAYER_SPEED",
                values_to = "SPEED")
+
+#####Data Analysis

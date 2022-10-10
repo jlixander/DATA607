@@ -1,0 +1,243 @@
+---
+title: "Project2"
+author: "Jose Rodriguez"
+date: "2022-10-10"
+output: html_document
+---
+
+```{r Load Libraries, include=FALSE}
+library("tidyverse")
+library("caret")
+library('caTools')
+```
+
+## Overview
+
+In this project we look at three different datasets. They all need formatting to become "tidy". We will then perform analysis on the dataset. The three datasets are as follows:
+*HUD Income limits:
+  + We look at income limits for all USA states and territories and how they range.
+*Brain stoke features:
+  + We perform some machine learning to verify if the variables are a good predictor of strokes.
+*NBA Player Distance Traveled:
+  + We look at distance traveled by players and see how it can influence game outcomes.
+
+
+# Dataset 1: HUD Income Limits
+```{r, echo=FALSE}
+#load in data into a dataframe
+urlfile <- 'https://raw.githubusercontent.com/jlixander/DATA607/main/Project2/Tidy1/Section8-FY22.csv'
+df <- read_csv(url(urlfile))
+
+#Get column names
+colnames(df)
+```
+# Dataset 1: Data Wrangling
+```{r}
+#Give each observation a unique ID - helps keep data group after a pivot_longer
+df$ID <- seq.int(nrow(df))
+
+#Convert the flat file into long format
+df_longer <- df |>
+  janitor::clean_names() |>
+  pivot_longer(cols = l50_1:l80_8, 
+               names_to = "income_level", 
+               values_to = "income_threshold") |>
+  mutate(household_size = case_when(
+    endsWith(income_level, "1") ~ "1",
+    endsWith(income_level, "2") ~ "2",
+    endsWith(income_level, "3") ~ "3",
+    endsWith(income_level, "4") ~ "4",
+    endsWith(income_level, "5") ~ "5",
+    endsWith(income_level, "6") ~ "6",
+    endsWith(income_level, "7") ~ "7",
+    endsWith(income_level, "8") ~ "8"
+    )) |>
+  mutate(program = case_when(
+    startsWith(income_level, "eli") ~ "extra_low_income",
+    startsWith(income_level, "l50") ~ "very_low_income",
+    startsWith(income_level, "l80") ~ "low_income"
+    )) |>
+  mutate(metro = recode(metro, "0" = "non_metro_area", "1" = "metro_area")
+           )
+
+#Remove unnecessary columns and clean up column values.
+df_clean <- df_longer |>
+  select(-c(county,income_level)) |>
+  mutate(county_name = str_remove_all(county_name, " County"))
+
+#Label US Territories in a list
+us_ter <- c("GU", "MP", "AS", "VI", "PR")
+
+df_clean <- df_clean |>
+  mutate(territory = case_when(
+    state_alpha %in% us_ter ~ "us_territory",
+    !(state_alpha %in% us_ter) ~ "non_us_territory"
+    ))
+```
+
+# Dataset 1: Analysis
+*Which States have the lowest and highest income limit average across programs?
+The top 5 states with the lowest average income limits are:
+  +PR
+  +MP
+  +AS
+  +MS
+  +AR
+
+*Which states have the highest income limits average across programs?
+The top 5 states with the highest average income limits are:
+  +DC
+  +MA
+  +HI
+  +CT
+  +NJ
+
+*Do metro areas tend to have higher income limits?
+  +As expected, it was found that metropolitan areas have higher income thresholds across all programs.
+
+*Do US territories, on average, have higher income limits compared to the continental US?
+  +Most US territory limits fall on the bottom half of all states.
+  
+```{r, Dataset1 plots}
+
+df_clean |>
+  ggplot(aes(x= reorder(factor(state_alpha), -income_threshold), y = income_threshold, fill = program)) +
+  stat_summary(fun = "mean", geom = "bar") +
+  coord_flip()
+
+df_clean |>
+  ggplot(aes(x= reorder(factor(state_alpha), -income_threshold), y = income_threshold, fill = program)) +
+  stat_summary(fun = "mean", geom = "bar") +
+  coord_flip() +
+  facet_wrap(~metro)
+
+df_clean |>
+  ggplot(aes(x= reorder(factor(state_alpha), -income_threshold), y = income_threshold, fill = program)) +
+  stat_summary(fun = "mean", geom = "bar") +
+  coord_flip() +
+  facet_wrap(~territory)
+```
+  
+  
+# Dataset 2: Brain stoke features
+```{r}
+#load in data into a dataframe
+urlfile <- 'https://raw.githubusercontent.com/jlixander/DATA607/main/Project2/Tidy2/brain_stroke.csv'
+df <- read_csv(url(urlfile))
+```
+# Dataset 2: Data Wrangling
+```{r}
+#Give each observation a unique ID - helps keep data group after a pivot_longer
+df$ID <- seq.int(nrow(df))
+
+#####Data Wrangling/tidying
+#Remove encoded values from columns
+df <- df |>
+  janitor::clean_names() |>
+  mutate(hypertension = recode(hypertension, "0" = "Negative", "1" = "Positive"),
+         stroke = recode(stroke, "0" = "Negative", "1" = "Positive"),
+         heart_disease = recode(heart_disease, "0" = "Negative", "1" = "Positive")
+         )
+
+#Set column data types
+df$age<-round(as.numeric(df$age), 0)
+
+#Check for na values in each column
+df %>%
+  summarise_all(funs(sum(is.na(.))))
+
+#Consolidate all condition columns
+df_longer <- df |>
+  pivot_longer(cols = hypertension:heart_disease, 
+               names_to = "condition", 
+               values_to = "condition_status")
+```
+
+# Dataset 2: Analysis
+```{r}
+#create dataframe without id
+df_class <- select(df, -id)
+
+#remove chr values to factor
+names <- c(1,3,4,5,6,7, 10,11) #create list of columns to turn into factor type
+df_class[,names] <- lapply(df_class[,names] , factor)
+glimpse(df_class)
+
+#partition and split data
+spl = sample.split(df_class$stroke, SplitRatio = 0.80)
+train = subset(df_class, spl==TRUE)
+test = subset(df_class, spl==FALSE)
+print(dim(train)); print(dim(test))
+
+#build, predict and evaluate the model
+model_glm = glm(stroke ~ . , family="binomial", data = train)
+summary(model_glm)
+
+#Check Baseline Accuracy
+prop.table(table(train$stroke))
+
+# Predictions on the training set
+predictTrain = predict(model_glm, data = train, type = "response")
+
+# Confusion matrix on training data
+table(train$stroke, predictTrain >= 0.5)
+(3786+1)/nrow(train)
+
+#Predictions on the test set
+predictTest = predict(model_glm, newdata = test, type = "response")
+
+# Confusion matrix on test set
+table(test$stroke, predictTest >= 0.5)
+957/nrow(test)
+```
+*It was found that the features found in the dataset can be used to predict if an individual is at risk of a stroke. This classification model is 95% accurate.
+
+
+# Dataset 3: NBA Player Distance Traveled
+```{r}
+#load in data into a dataframe
+urlfile <- 'https://raw.githubusercontent.com/jlixander/DATA607/main/Project2/Tidy3/nba_player_stats.csv'
+df <- read_csv(url(urlfile))
+```
+
+# Dataset 3: Data Wrangling
+```{r}
+#Drop Columns
+df2 <- df |>
+  select(-c(DIST_FEET,GP,DIST_MILES))
+
+#turn df into long format
+df_longer <- df2 |>
+  pivot_longer(cols = W:L, 
+               names_to = "GAME_OUTCOME", 
+               values_to = "GAME_CNT") |>
+  pivot_longer(cols = AVG_SPEED:AVG_SPEED_DEF,
+               names_to = "PLAYER_SPEED",
+               values_to = "SPEED")
+```
+
+# Dataset 3: Analysis
+```{r}
+ggplot(df, aes(x=DIST_MILES, y=AVG_SPEED)) +
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE, linetype="dashed",
+             color="darkred")
+
+ggplot(df, aes(x=DIST_MILES, y=W)) +
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE, linetype="dashed",
+             color="darkred")
+
+ggplot(df, aes(x=DIST_MILES_DEF, y=L)) +
+  geom_point() +
+  geom_smooth(method=lm, se=FALSE, linetype="dashed",
+             color="darkred")
+
+df |>
+  ggplot(aes(x=DIST_MILES, y = W, colour= factor(TEAM))) +
+  stat_summary(fun = "mean", geom = "point") +
+  geom_smooth(method=lm, se=FALSE, linetype="dashed",
+             color="darkred")
+
+```
+The original question was to see the correlation between the distance traveled and the average speed of a player. A slight negative correlation was found. Instead, the correlation between number of games won and distance traveled was compared. A strong correlation was found. However, this is not enough confirmation and a correlation was also plotted for games lost against distance traveled. This also showed a positive correlation. To dive deeper, the strength of each regression line was measured. Unexpectedly, it was found that long distance traveled may have a higher probability of losing a game. i.e.: players who traveled 1mile on average have about 18 wins, vs players who traveled 1 mile on average have about 30 losses.
