@@ -1,0 +1,45 @@
+{
+    "Books": {
+        "TopBooks": [
+            {
+                "Title": "Beautiful Creatures",
+                "Authors": [
+                    {
+                        "Author1": "Kami Garcia",
+                        "Author2": "Margaret Stohl"
+                    }
+                ],
+                "ISBN-10": "0316077038",
+                "ISBN-13": "978-0316077033",
+                "Publisher": "Little, Brown Books for Young Readers",
+                "Language": "English"
+            },
+            {
+                "Title": "The Five People You Meet in Heaven",
+                "Authors": [
+                    {
+                        "Author1": "Mitch Albom",
+                        "Author2": "NA"
+                    }
+                ],
+                "ISBN-10": "9781401308582",
+                "ISBN-13": "978-1401308582",
+                "Publisher": "Hachette Books",
+                "Language": "English"
+            },
+            {
+                "Title": "The Alchemist",
+                "Authors": [
+                    {
+                        "Author1": "Paulo Coelho",
+                        "Author2": "NA"
+                    }
+                ],
+                "ISBN-10": "0062315005",
+                "ISBN-13": "978-0062315007",
+                "Publisher": "HarperOne",
+                "Language": "English"
+            }
+        ] 
+    }
+}
