@@ -3,8 +3,8 @@ title: "Working with JSON, XML, and HTML Files"
 author: "Jose Rodriguez"
 date: "2022-10-17"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r Load libraries, include=FALSE}
