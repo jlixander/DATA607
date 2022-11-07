@@ -141,12 +141,85 @@ tidy_books %>%
 sentiword <- hash_sentiment_senticnet %>% 
   rename(
     word = x,
-    sentiment_score = y
-  )
+    sentiment_weight = y
+  ) |>
+  mutate(sentiment_tone = ifelse(sentiment_weight > 0, "Positive", "Negative"))
 
 
-#Get count of words for every 80-line section using sentiword
-holmes_sentiment_sentiword <- tidy_books %>%
-  inner_join(sentiword) %>%
-  sum(book, index = linenumber %/% 80, sentiment_score) %>%
+#Get count of words for every 80-line section using sentiword for all Sherlock Holmes Books
+holmes_sentiment_sentiword_cnt <- tidy_books %>%
+  inner_join(sentiword, by = "word") %>%
+  count(book, index = linenumber %/% 80, sentiment_tone) |>
+  pivot_wider(names_from = sentiment_tone, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = Positive - Negative,
+         method = "sentiword cnt")
+
+ggplot(holmes_sentiment_sentiword_cnt, aes(index, sentiment_residual, fill = book)) +
+  geom_col(show.legend = FALSE) + labs(title = "Sentiword Positive vs Negative Sentiments by Counts") +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+
+
+#Get Positive or negative sentiment weight for every 80_line section
+holmes_sentiment_sentiword_weight <- tidy_books %>%
+  inner_join(sentiword, by = "word") %>%
+  group_by(book, index = linenumber %/% 80) |>
+  summarise(sentiment_score = sum(sentiment_weight))
+
+ggplot(holmes_sentiment_sentiword_weight, aes(index, sentiment_score, fill = book)) +
+  geom_col(show.legend = FALSE) + labs(title = "Sentiword Positive vs Negative Sentiments by Word Weight") +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+
+
+#Compare Sentiword to lexicons from chapter 2 (bing and nrc)
+bing_and_nrc <- bind_rows(
+  tidy_books %>%
+    filter(book == "The Valley Of Fear") |>
+    inner_join(get_sentiments("bing")) %>%
+    mutate(method = "Bing et al."),
+    tidy_books %>%
+    filter(book == "The Valley Of Fear") |>
+    inner_join(get_sentiments("nrc") %>% 
+                 filter(sentiment %in% c("positive", 
+                                         "negative"))
+    ) %>%
+    mutate(method = "NRC")) %>%
+  count(method, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment,
+              values_from = n,
+              values_fill = 0) %>% 
   mutate(sentiment = positive - negative)
+
+bind_rows(holmes_sentiment_sentiword_cnt, 
+          bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+
+#count positive and negatives for sentiword
+sum(holmes_sentiment_sentiword_cnt$Positive)
+sum(holmes_sentiment_sentiword_cnt$Negative)
+
+##Get the most common positive and negative words-------------------------------
+senti_word_counts <- tidy_books %>%
+  inner_join(sentiword, by = "word") %>%
+  count(word, sentiment_tone, sort = TRUE) %>%
+  ungroup()
+
+senti_word_counts %>%
+  group_by(sentiment_tone) %>%
+  slice_max(n, n = 10) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment_tone)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment_tone, scales = "free_y") +
+  labs(x = "Contribution to sentiment",
+       y = NULL)
+
+##Wordcloud Sentiword-----------------------------------------------------------
+tidy_books %>%
+  inner_join(sentiword) %>%
+  count(word, sentiment_tone, sort = TRUE) %>%
+  acast(word ~ sentiment_tone, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)

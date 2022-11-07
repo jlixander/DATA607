@@ -9,41 +9,302 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Overview
-In this markdown we will explore text mining. We will be using the "hgwellsr" package that provides access to the full texts of six novels by H. G. Wells.
+# Overview
+In this markdown we will explore text mining. We will be using the "sherlock" data package that provides access to the 7 Sherlock Holmes novels, which includes
+1. A Scandal in Bohemia
+2. A Study in Scarlet
+3. The Adventure of the Red Circle
+4. The Advaenture of Wisteria Lodge
+5. The Hound of the Baskervilles
+6. The Sign of the Four
+7. The Valley Of Fear
 
-We will be using the following libraries:
+We will be using Text Mining with R: A Tidy Approach by Julia Silge & David Robinson as a guide to quantify sentiment. Given that the story of Sherlock Holmes revolves around detective work, do we expect the novels to have a negative sentiment?
+
+We will be using the following libraries to explore and mine sentiment from all 7 books:
 *dplyr
 *stringr
 *tidyr
-*appa
+*tidytext
+*ggplot2
+*lexicon
+*wordcloud
+*reshape2
 
-```{r Load Packages}
+```{r Load Packages, echo=FALSE}
 library(tidyr)
 library(dplyr)
 library(stringr)
+library(tidytext)
+library(ggplot2)
+library(lexicon)
+library(wordcloud)
+library(reshape2)
+#knitr::kable(head(books_df[, 1:26]), "simple")
 ```
+# Loading work data
+
+After loading the "sherlock" library it is crucial to tidy the text as much as possible. Given that the package contains several books, the groupby() function will serve to separate them. Then, a mutate function along with a regular expression is used to detect each chapter. A filter() is used to remove any row values where chapter is equal to 0 (zero). Removing these rows will filter out any headers and table of contents in every book.Lastly, we tokenize our text data. Tokenization is the practice of splitting text into words or larger groups of words, such as sentences or paragraphs. For our purposes, we will tokenize at the single word level.
 
 ```{r Load data}
-#devtools::install_github("erikhoward/hgwellsr")
-library(hgwellsr)
+#devtools::install_github("EmilHvitfeldt/sherlock")
+library(sherlock)
 
-#Retrieve package citation
-#citation("hgwellsr")
+holm <- holmes %>%
+  group_by(book) %>%
+  mutate(chapter = cumsum(str_detect(text, 
+                                     regex("^chapter [\\divxlc]",
+                                           ignore_case = TRUE)))) |>
+  filter(chapter != 0) |> #remove intro from all books
+  ungroup()
 
 
-data <- annveronica
-data
+tidy_books <- holmes %>%
+  group_by(book) %>%
+  mutate(linenumber = row_number(),
+         chapter = cumsum(str_detect(text, 
+                                regex("^chapter [\\divxlc]", 
+                                      ignore_case = TRUE)))) |>
+  filter(chapter != 0) %>%
+  ungroup() %>%
+  unnest_tokens(word, text)
 ```
-```{r Tidying Text}
-#Splitting into sentences
 
+# Defining the Lexicons
+Next we will initialize the three lexicons introduced in the textbook along with the lexicon of our choosing. For our choice, we will be using Sentiword. Aside from a dichotomous positive and negative sentiment, this lexicon includes a variable with a weighted score for each word.
+
+```{r Load Lexicons}
+afinn <- get_sentiments("afinn")
+bing <- get_sentiments("bing")
+nrc <- get_sentiments("nrc")
+```
+
+# Using nrc for joyful words
+To extract joyful words we begin by filtering our nrc list to "joy". We proceed to use an inner_join to be left with only matching words from both dataframes. Whats left now is to do count of words.
+```{r Load Lexicon}
+#Get joyful words from nrc
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+
+#Get count of joyful words from Holmes series
+tidy_books %>%
+  inner_join(nrc_joy) %>%
+  count(word, sort = TRUE)
+```
+# Sentiments by chunks
+Another method can be used to text mine to evaluate sentiment at a deeper level is chunking - segmentation. Sometimes words on their own can be misleading (e.g.: "do not like"). The word "like" is negated by "not". If we tokenize at a broader level, we may capture a more realistic sentiment. For our next example, we will segment our text to every 80 lines of text for each book. We will count both, the number of positive and the number negative words, and calculate the residual count (positive - negative). If the residual count is positive, we will assign the chunk as being in the positive side of sentiment, and vice versa.
+
+In this particular segment we use the "bing" lexicon to label sentiment. Once labeled, we plot our residuals to evaluate overall sentiment for book. By using bing, we can assume that most Sherlock Holmes novels are written in a negative connotation.
+
+```{r}
+#Establishing sentiment to each chunk
+holmes_sentiment <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(book, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+
+#Plot sentiment for each chunk
+ggplot(holmes_sentiment, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+# Other Lexicons
+What about the other lexicons?
+
+In this portion we will evaluate the differences of the three lexicons introduced by Julia and David. We will look at one book: A study in Scarlet, to visualize the differences of the 3 lexicons.
+ 
+```{r}
+#Extract one book
+asib <- tidy_books %>% 
+  filter(book == "A Study In Scarlet")
+
+#Get sentiment for AFINN
+afinn <- asib %>% 
+  inner_join(get_sentiments("afinn")) %>% 
+  group_by(index = linenumber %/% 80) %>% 
+  summarise(sentiment = sum(value)) %>% 
+  mutate(method = "AFINN")
+
+#Get sentiment for bing and nrc
+bing_and_nrc <- bind_rows(
+  asib %>% 
+    inner_join(get_sentiments("bing")) %>%
+    mutate(method = "Bing et al."),
+  asib %>% 
+    inner_join(get_sentiments("nrc") %>% 
+                 filter(sentiment %in% c("positive", 
+                                         "negative"))
+    ) %>%
+    mutate(method = "NRC")) %>%
+  count(method, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment,
+              values_from = n,
+              values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+
+#visualize all 3 lexicons
+bind_rows(afinn, 
+          bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+
+#Get count of positive vs negative words
+get_sentiments("nrc") %>% 
+  filter(sentiment %in% c("positive", "negative")) %>% 
+  count(sentiment)
+
+get_sentiments("bing") %>% 
+  count(sentiment)
 
 ```
 
+# Common words by sentiment
+What if we want to know which words appear the most often by sentiment?
+Tidyr has you covered. Using inner_join() and count() one can quantify each word and bin by a given category. In this case, positive and negative.However, there are too many words and it saturates our plot. To fix this we'll use head() to slice our data to show only the top 10 most frequent words for each sentiment.
 
+As mentioned by Julia and David, we too have "miss" as a frequent top word for negative sentiment. We will take their same approach and add it to our list of stop words. Just like other stop words, the suffix "miss" does not add any value to a sentiment analysis.
 
+```{r}
+bing_word_counts <- tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  ungroup()
 
-#Citations
-*Erik Howard (2022). hgwellsr: Data package of selected H. G. Wells novels. R package version 0.2.0. https://github.com/erikhoward/hgwellsr
+#visualize most common positive and negative words
+bing_word_counts %>%
+  group_by(sentiment) %>%
+  slice_max(n, n = 10) %>% 
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment, scales = "free_y") +
+  labs(x = "Contribution to sentiment",
+       y = NULL)
+
+#Add a custom stop word to list
+custom_stop_words <- bind_rows(tibble(word = c("miss"),  
+                                      lexicon = c("custom")), 
+                               stop_words)
+```
+# Wordcloud
+Using a wordcloud gives a ready an easy to view scope of the top words by using proportions from counts. The bigger the number, the bigger word. We'll create one with a division that will display which ones hold positive sentiment and vice versa.
+
+```{r}
+tidy_books %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+```
+#A Fourth Lexicon
+In this section we will explore using a lexicon not mentioned in Text Mining for R. Given that sentiword gives us two values (one categorical, one continous), we will take two approaches to evaluate which one best fits our needs. For both approaches we will be looking at residuals.
+
+## Evaluation based on counts of each sentiment
+```{r}
+sentiword <- hash_sentiment_senticnet %>% 
+  rename(
+    word = x,
+    sentiment_weight = y
+  ) |>
+  mutate(sentiment_tone = ifelse(sentiment_weight > 0, "Positive", "Negative"))
+```
+
+```{r}
+#Get count of words for every 80-line section using sentiword for all Sherlock Holmes Books
+holmes_sentiment_sentiword_cnt <- tidy_books %>%
+  inner_join(sentiword, by = "word") %>%
+  count(book, index = linenumber %/% 80, sentiment_tone) |>
+  pivot_wider(names_from = sentiment_tone, values_from = n, values_fill = 0) %>% 
+  mutate(sentiment = Positive - Negative,
+         method = "sentiword cnt")
+
+ggplot(holmes_sentiment_sentiword_cnt, aes(index, sentiment, fill = book)) +
+  geom_col(show.legend = FALSE) + labs(title = "Sentiword Positive vs Negative Sentiments by Counts") +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+## Evaluation based on the sentimental weight of each word.
+```{r}
+#Get Positive or negative sentiment weight for every 80_line section
+holmes_sentiment_sentiword_weight <- tidy_books %>%
+  inner_join(sentiword, by = "word") %>%
+  group_by(book, index = linenumber %/% 80) |>
+  summarise(sentiment_score = sum(sentiment_weight))
+
+ggplot(holmes_sentiment_sentiword_weight, aes(index, sentiment_score, fill = book)) +
+  geom_col(show.legend = FALSE) + labs(title = "Sentiword Positive vs Negative Sentiments by Word Weight") +
+  facet_wrap(~book, ncol = 2, scales = "free_x")
+```
+# Comparing Lexicons
+```{r}
+bing_and_nrc <- bind_rows(
+  tidy_books %>%
+    filter(book == "The Valley Of Fear") |>
+    inner_join(get_sentiments("bing")) %>%
+    mutate(method = "Bing et al."),
+    tidy_books %>%
+    filter(book == "The Valley Of Fear") |>
+    inner_join(get_sentiments("nrc") %>% 
+                 filter(sentiment %in% c("positive", 
+                                         "negative"))
+    ) %>%
+    mutate(method = "NRC")) %>%
+  count(method, index = linenumber %/% 80, sentiment) %>%
+  pivot_wider(names_from = sentiment,
+              values_from = n,
+              values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+
+bind_rows(holmes_sentiment_sentiword_cnt, 
+          bing_and_nrc) %>%
+  ggplot(aes(index, sentiment, fill = method)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~method, ncol = 1, scales = "free_y")
+
+#count positive and negatives for sentiword
+sum(holmes_sentiment_sentiword_cnt$Positive)
+sum(holmes_sentiment_sentiword_cnt$Negative)
+
+```
+# Rank words by sentiment
+```{r}
+senti_word_counts <- tidy_books %>%
+  inner_join(sentiword, by = "word") %>%
+  count(word, sentiment_tone, sort = TRUE) %>%
+  ungroup()
+
+senti_word_counts %>%
+  group_by(sentiment_tone) %>%
+  slice_max(n, n = 10) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word, fill = sentiment_tone)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~sentiment_tone, scales = "free_y") +
+  labs(x = "Contribution to sentiment",
+       y = NULL)
+
+```
+## Wordcloud Sentiword
+```{r}
+tidy_books %>%
+  inner_join(sentiword) %>%
+  count(word, sentiment_tone, sort = TRUE) %>%
+  acast(word ~ sentiment_tone, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("gray20", "gray80"),
+                   max.words = 100)
+```
+#Conclusion
+ 
+By using tidyr and guidance from Text Mining with R we were able to evaluate the sentiment for all 7 Sherlock Holmes novels.Using AFINN, Bing et al. and nrc we found that there is heavy variance in sentiment. When trying the lexicon of our choosing, we found that it was overly optimistic with the model showing only positve sentiment with the dichotomous attribute as well as the weight sentiment score. Given the outcome of all 4 lexicons, I would label the Sherlock Holmes novels slightly more positive than negative overall.
+
+#References
+*Emil Hvitfeldt (2022). sherlock: What the Package Does (One Line, Title Case). R package version 0.0.0.9000.
+**https://github.com/EmilHvitfeldt/sherlock
+
+*Julia Silge and David Robinson 2016. Text Mining with R: A Tidy Approach. https://www.tidytextmining.com/index.html
+**
 
