@@ -1,0 +1,49 @@
+---
+title: "Data607 - NLP"
+author: "Jose Rodriguez"
+date: "2022-11-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+In this markdown we will explore text mining. We will be using the "hgwellsr" package that provides access to the full texts of six novels by H. G. Wells.
+
+We will be using the following libraries:
+*dplyr
+*stringr
+*tidyr
+*appa
+
+```{r Load Packages}
+library(tidyr)
+library(dplyr)
+library(stringr)
+```
+
+```{r Load data}
+#devtools::install_github("erikhoward/hgwellsr")
+library(hgwellsr)
+
+#Retrieve package citation
+#citation("hgwellsr")
+
+
+data <- annveronica
+data
+```
+```{r Tidying Text}
+#Splitting into sentences
+
+
+```
+
+
+
+
+#Citations
+*Erik Howard (2022). hgwellsr: Data package of selected H. G. Wells novels. R package version 0.2.0. https://github.com/erikhoward/hgwellsr
+
