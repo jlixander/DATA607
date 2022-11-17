@@ -3,7 +3,7 @@ library(dplyr)
 library(stringr)
 library(tidytext)
 library(ggplot2)
-library(lexicon) #hash_sentiment_senticnet
+library(lexicon)
 library(wordcloud)
 library(reshape2)
 
@@ -207,7 +207,7 @@ senti_word_counts <- tidy_books %>%
 
 senti_word_counts %>%
   group_by(sentiment_tone) %>%
-  slice_max(n, n = 10) %>% 
+  slice_max(n, n = 10) %>% ````
   ungroup() %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(n, word, fill = sentiment_tone)) +

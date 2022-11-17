@@ -1,0 +1,51 @@
+---
+title: "12 - Recommender Systems"
+author: "Jose Rodriguez"
+date: "2022-11-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Website Overview
+
+Indeed is an American worldwide job board site launched in 2004. According to Indeed's internal data, it has more than 300 million unique visitors each month. The site focuses on allowing its users to freely apply to jobs posted by recruiters. 
+
+
+## Who are your target users?
+Indeed has two main target users.
+
+1) Job seekers: Individuals who are seeking new employment opportunities.
+
+2) Employers: Recruiters can post their job listings on the website to have multiple candidates apply.
+
+
+## What are their key goals?
+Provide an online job board where job seekers can connect to employers looking to fill job vacancies.
+
+
+## How can you help them accomplish those goals?
+In this era of computing, user experience has become a driving force in user retention.
+
+Indeed's website features a left pane with a list of potential job matches. If the user clicks on a post, the right pane will populate the details of the job listing. The website also offers its job seekers many filtering and sorting features, such as location, job level, and education requirements. However, it may be lacking a major one; the ability to only view jobs that have a reported salary range.The site does provide a *Salary Estimate* filter, but still lacks transparency for its users.
+
+Another important feature may be to allow its job seekers to not see job listings by specific companies. For example, there may be people who are not interested in consulting and would appreciate being able to hide job listing from firms like PWC, EY, etc.
+
+
+## Website reverse engineering
+According to the article by Preetha Appan^1^, Indeed uses a hybrid offline + online pipeline with Apache Mahout as its base. Their recommendation system has been slowly built through trial and error while making modifications and reviewing product metrics. Their recommendation system is set to solve a few problems:
+
+1. Rapid inventory growth: Their systems receives millions of new job listings everyday.
+2. New users: being able to provide best job recommendations to users with limited data.
+3. Listing cycle: provide users the freshest job posts.
+4. Limited supply: one job listing is usually meant to fill one position. The algorithm has to avoid saturating a job post with too many job seekers.
+
+Their algorithm uses two approaches. Content-based and behavior-based. Content-based uses text mining on resume and set preferences by the user. Behavior-based uses domain-agnostic data that is mined through user interaction in the website.
+
+
+## References
+1. Building a Large-Scale Machine Learning Pipeline for Job Recommendations by Preetha Appan
+https://engineering.indeedblog.com/blog/2016/04/building-a-large-scale-machine-learning-pipeline-for-job-recommendations/
+
