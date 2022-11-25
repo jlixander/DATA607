@@ -1,0 +1,100 @@
+---
+title: "TidyVerse CREATE assignment  - Package Vignette"
+output: html_document
+date: "2022-11-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(httr)
+```
+
+# Overview
+In this project we will demonstrate the top functions of the TidyVerse 'purrr' package. We will use the Sleep Data by Mathrun Ache found on Kaggle to demonstrate the packages' main functionalities.
+
+# Loading Data
+```{r}
+
+urlfile <- 'https://raw.githubusercontent.com/jlixander/DATA607/main/Tidyverse_package_project/Data/dataset_2191_sleep.csv'
+data <- read_csv(url(urlfile))
+```
+
+### What is 'purrr'?
+The 'purrr' package was created to enhance R's functional programming toolkit by providing a complete set of tools for working with functions and vectors.
+`https://purrr.tidyverse.org/`
+
+
+# Map()
+map() is the most commonly used function from the 'purrr' package. This function allows R users to apply a function to each element of a list or atomic vector while returning the object of the same length as the input. In the example below we extract the column containing the brain_weight of mammals currently measured in grams ito a list. Given that the body_weight is reported in kilograms, we will transform the brain_weight to kilograms. 
+
+Simply put, we create a custom function that takes in a list or vector to be divided by 1000. This function returns the result of the operation which is the brain_weight of mammals measured in kilograms. It is also important to note that the map() function returns the same type of data type fed into it (i.e.: int->int, db->db, etc). Furthermore, the map() has additional variations that have data class output transformations:
+1. map_dbl() -double vector
+2. map_int() -integer vector
+3. map_chr() -character vector
+4. map_lgl() -logical vector
+5. map_dfc() -return a dataframe created by column binding
+6. map_dfr() -return a dataframe created by row binding
+
+
+```{r, map() example}
+#creating custom function
+g_kg_func <- function(x) {
+  x/1000
+}
+
+#extracting the brain_weight column into a list.
+brain_weight_lst <- list(data$brain_weight)
+
+#using custom function with map()
+brain_weight_kg <- map(brain_weight_lst, g_kg_func)
+brain_weight_kg
+```
+On a dimensionality level, map() allows the aforemention variations to be used with:
+1. Two lists, ex: map2_dbl()
+2. Many lists, ex: pmap_dbl()
+3. Lists and indexes, ex: imap_dbl()
+
+
+# Filtering datasets
+The filter functions allow programmers to subset data based on logical tests. For example, we map a function to a list that returns a logical value - TRUE or FALSE. If the value evaluates to TRUE, the value is kept or discarded. See the 2 examples below for more details
+
+
+```{r}
+#creating custom function
+greater_than <- function(x) {
+  x >5
+}
+
+#Keep values where brain weight is greater than 5 grams
+purrr::keep(data$brain_weight,greater_than)
+
+
+#creating custom function
+less_than <- function(x) {
+  x < 4
+}
+
+#Keep values where total sleep is less than 4
+purrr::discard(data$total_sleep,greater_than)
+```
+# Flatten()
+Flattening is used frequently to reduce dimension of a dataframe. This creates a single list out of all the values found in a dataframe.
+```{r}
+#flatten df
+flatten <- purrr::flatten(data)
+head(flatten, 5)
+length(flatten)
+```
+#Append()
+Many times the need to combine multiple dataframes will arise without a join. Perhaps we are looking to add more rows of data. This can be accomplished using append(). THis function add your element to the end of the list or dataframe in question.
+```{r}
+#appending two lists
+appending <- append(brain_weight_kg, brain_weight_lst)
+appending
+```
+
+# Resources
+
+* Sleep Data - https://www.kaggle.com/datasets/mathurinache/sleep-dataset
+* Official 'purrr' package cheat sheet - https://github.com/rstudio/cheatsheets/blob/main/purrr.pdf
