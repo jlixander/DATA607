@@ -9,7 +9,7 @@ output:
 
 ```{r, echo= FALSE}
 #Set API key in a vector
-api_key <- "GXydLE1KSp8UEvtev8gdeDh8ojwOVZIV"
+api_key <- "***********************"
 ```
 
 # Overview
